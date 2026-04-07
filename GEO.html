@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GEO 数据分析仪表盘</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --primary-weak: #dbeafe;
+      --accent: #7c3aed;
+      --good: #059669;
+      --warn: #b45309;
+      --danger: #dc2626;
+      --border: #e5e7eb;
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", Arial, sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #eef2ff 0%, var(--bg) 120px);
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(10px);
+      background: rgba(245, 247, 251, 0.75);
+      border-bottom: 1px solid rgba(229, 231, 235, 0.7);
+    }
+    .topbar-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 240px;
+    }
+    .logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      background: radial-gradient(120% 120% at 20% 20%, #60a5fa 0%, #2563eb 45%, #1d4ed8 100%);
+      box-shadow: 0 10px 30px rgba(37, 99, 235, 0.22);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      user-select: none;
+    }
+    .brand .name { font-weight: 800; }
+    .brand .desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.7);
+      color: #374151;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--muted);
+    }
+    .dot.ok { background: var(--good); }
+    .dot.warn { background: var(--warn); }
+    .dot.bad { background: var(--danger); }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 18px 24px 24px; }
+    .header { margin-bottom: 18px; }
+    .title { margin: 0; font-size: 28px; font-weight: 700; }
+    .subtitle { margin-top: 8px; color: var(--muted); font-size: 14px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+    .panel { display: grid; gap: 12px; }
+    .card-hd {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 14px 16px 0;
+    }
+    .card-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+    }
+    .card-sub {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .card-bd { padding: 12px 16px 16px; }
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .mini {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 10px 9px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.75));
+    }
+    .mini .k { font-size: 12px; color: var(--muted); font-weight: 700; }
+    .mini .v { margin-top: 6px; font-size: 18px; font-weight: 900; }
+    .mini .h { margin-top: 6px; font-size: 12px; color: #475569; font-weight: 700; }
+    .list {
+      display: grid;
+      gap: 8px;
+      padding: 0;
+      margin: 0;
+      list-style: none;
+    }
+    .li {
+      display: grid;
+      grid-template-columns: 18px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 10px 10px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+    }
+    .ico {
+      width: 18px;
+      height: 18px;
+      border-radius: 6px;
+      background: rgba(37, 99, 235, 0.12);
+      border: 1px solid rgba(37, 99, 235, 0.2);
+    }
+    .li .t { font-size: 13px; font-weight: 800; }
+    .li .d { margin-top: 2px; font-size: 12px; color: var(--muted); font-weight: 650; line-height: 1.5; }
+    .controls {
+      padding: 18px;
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-size: 13px; color: var(--muted); font-weight: 600; }
+    .field input[type="text"],
+    .field input[type="url"],
+    .field input[type="file"],
+    .field select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      background: #fff;
+      outline: none;
+    }
+    .field input:focus,
+    .field select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-weak);
+    }
+    .col-4 { grid-column: span 4; }
+    .col-3 { grid-column: span 3; }
+    .col-2 { grid-column: span 2; }
+    .col-12 { grid-column: span 12; }
+    .btn-wrap { display: flex; align-items: end; }
+    .btn {
+      height: 40px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+      padding: 0 18px;
+      cursor: pointer;
+    }
+    .btn:disabled { opacity: 0.65; cursor: not-allowed; }
+    .status {
+      min-height: 24px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px dashed var(--border);
+      color: var(--muted);
+      background: #fafafa;
+    }
+    .status.loading { color: #92400e; background: #fffbeb; border-color: #fde68a; }
+    .status.success { color: #166534; background: #f0fdf4; border-color: #bbf7d0; }
+    .status.error { color: #991b1b; background: #fef2f2; border-color: #fecaca; }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .metric { padding: 16px; }
+    .metric .label { color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+    .metric .value { font-size: 28px; font-weight: 700; }
+    .charts { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 18px; }
+    .chart-card { padding: 14px 16px; }
+    .chart-title { margin: 0 0 8px; font-size: 15px; font-weight: 700; }
+    .chart-wrap { position: relative; height: 280px; }
+    .table-card { padding: 14px 16px 10px; }
+    .table-title { margin: 0 0 10px; font-size: 15px; font-weight: 700; }
+    .table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: 10px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 700px;
+      background: #fff;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    th { background: #f8fafc; color: #374151; font-weight: 700; }
+    .empty { color: var(--muted); font-size: 13px; padding: 10px 0 2px; }
+    @media (max-width: 900px) {
+      .col-4, .col-3, .col-2 { grid-column: span 12; }
+      .metrics { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: 1fr; }
+      .mini-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="logo">G</div>
+        <div>
+          <div class="name">GEO 数据分析仪表盘</div>
+          <div class="desc">单页离线分析 · CSV/JSON 导入 · 多类型可视化</div>
+        </div>
+      </div>
+      <div class="nav">
+        <span class="chip"><span id="navDot" class="dot"></span><span id="navState">未检测</span></span>
+        <span class="chip">数据源：<span id="navSource">模拟数据</span></span>
+        <span class="chip">记录数：<span id="navRows">--</span></span>
+      </div>
+    </div>
+  </div>
+  <div class="container">
+    <header class="header">
+      <h1 class="title">分析面板</h1>
+      <div class="subtitle">输入 URL / 关键词并上传 CSV 或 JSON 文件（可选），点击开始检测生成分析结果与洞察建议。</div>
+    </header>
+
+    <section class="card controls">
+      <div class="field col-4">
+        <label for="urlInput">URL</label>
+        <input id="urlInput" type="url" placeholder="https://example.com/page" />
+      </div>
+      <div class="field col-3">
+        <label for="keywordInput">关键词</label>
+        <input id="keywordInput" type="text" placeholder="例如：地理数据分析" />
+      </div>
+      <div class="field col-3">
+        <label for="fileInput">上传本地文件（CSV / JSON）</label>
+        <input id="fileInput" type="file" accept=".csv,.json,application/json,text/csv" />
+      </div>
+      <div class="field col-2">
+        <label for="chartTypeSelect">图表类型</label>
+        <select id="chartTypeSelect">
+          <option value="line">折线图</option>
+          <option value="horizontalBar">条形图（横向）</option>
+          <option value="bar">柱状图（纵向）</option>
+          <option value="pie">饼状图</option>
+        </select>
+      </div>
+      <div class="field col-2 btn-wrap">
+        <button id="analyzeBtn" class="btn">开始检测</button>
+      </div>
+      <div class="col-12">
+        <span id="statusBadge" class="status">等待检测</span>
+      </div>
+    </section>
+
+    <div class="grid">
+      <div class="panel">
+        <section class="metrics">
+          <div class="card metric">
+            <div class="label">点击率（CTR）</div>
+            <div id="ctrValue" class="value">--</div>
+          </div>
+          <div class="card metric">
+            <div class="label">引用率（Citation Rate）</div>
+            <div id="citationValue" class="value">--</div>
+          </div>
+          <div class="card metric">
+            <div class="label">转化率（Conversion Rate）</div>
+            <div id="conversionValue" class="value">--</div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-hd">
+            <div>
+              <h3 class="card-title">数据概况</h3>
+              <div class="card-sub">目标与数据源信息（自动从输入/文件解析）</div>
+            </div>
+            <span class="chip">范围：<span id="rangeText">--</span></span>
+          </div>
+          <div class="card-bd">
+            <div class="mini-grid">
+              <div class="mini">
+                <div class="k">曝光量总计</div>
+                <div id="sumImpressions" class="v">--</div>
+                <div id="peakImpressions" class="h">峰值：--</div>
+              </div>
+              <div class="mini">
+                <div class="k">点击量总计</div>
+                <div id="sumClicks" class="v">--</div>
+                <div id="peakClicks" class="h">峰值：--</div>
+              </div>
+              <div class="mini">
+                <div class="k">引用量总计</div>
+                <div id="sumCitations" class="v">--</div>
+                <div id="peakCitations" class="h">峰值：--</div>
+              </div>
+              <div class="mini">
+                <div class="k">转化量总计</div>
+                <div id="sumConversions" class="v">--</div>
+                <div id="peakConversions" class="h">峰值：--</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="charts">
+          <div class="card chart-card">
+            <h3 class="chart-title">CTR 趋势图</h3>
+            <div class="chart-wrap"><canvas id="ctrChart"></canvas></div>
+          </div>
+          <div class="card chart-card">
+            <h3 class="chart-title">引用率趋势图</h3>
+            <div class="chart-wrap"><canvas id="citationChart"></canvas></div>
+          </div>
+          <div class="card chart-card">
+            <h3 class="chart-title">转化率趋势图</h3>
+            <div class="chart-wrap"><canvas id="conversionChart"></canvas></div>
+          </div>
+        </section>
+
+        <section class="card table-card">
+          <h3 class="table-title">详细数据表</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>日期</th>
+                  <th>曝光量</th>
+                  <th>点击量</th>
+                  <th>引用量</th>
+                  <th>转化量</th>
+                  <th>CTR</th>
+                  <th>引用率</th>
+                  <th>转化率</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody">
+                <tr><td colspan="8" class="empty">暂无数据，请点击“开始检测”。</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <aside class="panel">
+        <section class="card">
+          <div class="card-hd">
+            <div>
+              <h3 class="card-title">分析目标</h3>
+              <div class="card-sub">来自输入框（不抓取网页，仅记录分析对象）</div>
+            </div>
+          </div>
+          <div class="card-bd">
+            <ul class="list">
+              <li class="li">
+                <span class="ico"></span>
+                <div>
+                  <div class="t">URL</div>
+                  <div id="targetUrl" class="d">--</div>
+                </div>
+              </li>
+              <li class="li">
+                <span class="ico" style="background: rgba(124,58,237,0.12); border-color: rgba(124,58,237,0.2);"></span>
+                <div>
+                  <div class="t">关键词</div>
+                  <div id="targetKeyword" class="d">--</div>
+                </div>
+              </li>
+              <li class="li">
+                <span class="ico" style="background: rgba(5,150,105,0.12); border-color: rgba(5,150,105,0.2);"></span>
+                <div>
+                  <div class="t">数据源</div>
+                  <div id="targetSource" class="d">模拟数据</div>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-hd">
+            <div>
+              <h3 class="card-title">洞察与建议</h3>
+              <div class="card-sub">基于趋势与峰值的轻量建议（本地计算）</div>
+            </div>
+            <span class="chip">建议数：<span id="insightCount">0</span></span>
+          </div>
+          <div class="card-bd">
+            <ul id="insightList" class="list"></ul>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const urlInput = document.getElementById("urlInput");
+    const keywordInput = document.getElementById("keywordInput");
+    const fileInput = document.getElementById("fileInput");
+    const chartTypeSelect = document.getElementById("chartTypeSelect");
+    const analyzeBtn = document.getElementById("analyzeBtn");
+    const statusBadge = document.getElementById("statusBadge");
+    const tableBody = document.getElementById("tableBody");
+    const ctrValue = document.getElementById("ctrValue");
+    const citationValue = document.getElementById("citationValue");
+    const conversionValue = document.getElementById("conversionValue");
+
+    const navDot = document.getElementById("navDot");
+    const navState = document.getElementById("navState");
+    const navSource = document.getElementById("navSource");
+    const navRows = document.getElementById("navRows");
+
+    const targetUrl = document.getElementById("targetUrl");
+    const targetKeyword = document.getElementById("targetKeyword");
+    const targetSource = document.getElementById("targetSource");
+
+    const rangeText = document.getElementById("rangeText");
+    const sumImpressions = document.getElementById("sumImpressions");
+    const sumClicks = document.getElementById("sumClicks");
+    const sumCitations = document.getElementById("sumCitations");
+    const sumConversions = document.getElementById("sumConversions");
+    const peakImpressions = document.getElementById("peakImpressions");
+    const peakClicks = document.getElementById("peakClicks");
+    const peakCitations = document.getElementById("peakCitations");
+    const peakConversions = document.getElementById("peakConversions");
+
+    const insightCount = document.getElementById("insightCount");
+    const insightList = document.getElementById("insightList");
+
+    let ctrChart, citationChart, conversionChart;
+    let lastData = [];
+    let currentChartType = "line";
+    let lastSource = "模拟数据";
+
+    function setStatus(type, text) {
+      statusBadge.className = "status";
+      if (type) statusBadge.classList.add(type);
+      statusBadge.textContent = text;
+    }
+
+    function setNavState(state, kind) {
+      navState.textContent = state;
+      navDot.className = "dot";
+      if (kind === "ok") navDot.classList.add("ok");
+      if (kind === "warn") navDot.classList.add("warn");
+      if (kind === "bad") navDot.classList.add("bad");
+    }
+
+    function toPercent(v) {
+      return (v * 100).toFixed(2) + "%";
+    }
+
+    function fmtInt(n) {
+      const x = Number(n) || 0;
+      return x.toLocaleString("zh-CN");
+    }
+
+    function avg(arr, key) {
+      return arr.length ? arr.reduce((s, r) => s + (Number(r[key]) || 0), 0) / arr.length : 0;
+    }
+
+    function sum(arr, key) {
+      return arr.reduce((s, r) => s + (Number(r[key]) || 0), 0);
+    }
+
+    function maxBy(arr, key) {
+      let best = null;
+      for (const r of arr) {
+        if (!best || Number(r[key] || 0) > Number(best[key] || 0)) best = r;
+      }
+      return best;
+    }
+
+    function trendHint(series) {
+      if (!series || series.length < 2) return { dir: "flat", ratio: 0 };
+      const first = Number(series[0]) || 0;
+      const last = Number(series[series.length - 1]) || 0;
+      const denom = Math.max(1e-9, Math.abs(first));
+      const ratio = (last - first) / denom;
+      if (ratio > 0.06) return { dir: "up", ratio };
+      if (ratio < -0.06) return { dir: "down", ratio };
+      return { dir: "flat", ratio };
+    }
+
+    function renderInsights(data) {
+      const ctrSeries = data.map(d => d.ctr);
+      const citSeries = data.map(d => d.citationRate);
+      const convSeries = data.map(d => d.conversionRate);
+
+      const ctrT = trendHint(ctrSeries);
+      const citT = trendHint(citSeries);
+      const convT = trendHint(convSeries);
+
+      const bestCtr = maxBy(data, "ctr");
+      const bestConv = maxBy(data, "conversionRate");
+      const bestCit = maxBy(data, "citationRate");
+
+      const items = [];
+      items.push({
+        title: "趋势概览",
+        desc: `CTR ${ctrT.dir === "up" ? "上升" : ctrT.dir === "down" ? "下降" : "平稳"}，引用率 ${citT.dir === "up" ? "上升" : citT.dir === "down" ? "下降" : "平稳"}，转化率 ${convT.dir === "up" ? "上升" : convT.dir === "down" ? "下降" : "平稳"}。`
+      });
+      if (bestCtr) items.push({
+        title: "CTR 峰值日",
+        desc: `${bestCtr.date} 达到 ${toPercent(bestCtr.ctr)}，可回溯当日标题/主图/价格策略等因素。`
+      });
+      if (bestConv) items.push({
+        title: "转化率峰值日",
+        desc: `${bestConv.date} 达到 ${toPercent(bestConv.conversionRate)}，建议对照当天投放/活动/库存与评价变化。`
+      });
+      if (bestCit) items.push({
+        title: "引用率峰值日",
+        desc: `${bestCit.date} 达到 ${toPercent(bestCit.citationRate)}，可考虑增加内容可引用性（参数/对比/场景图）。`
+      });
+      const totalImpr = sum(data, "impressions");
+      const totalClicks = sum(data, "clicks");
+      if (totalImpr > 0 && totalClicks === 0) {
+        items.push({ title: "异常提示", desc: "曝光量存在但点击为 0，可能是数据字段不匹配或漏填 clicks。建议检查 CSV 表头。" });
+      }
+
+      insightCount.textContent = String(items.length);
+      insightList.innerHTML = items.map(it => `
+        <li class="li">
+          <span class="ico"></span>
+          <div>
+            <div class="t">${it.title}</div>
+            <div class="d">${it.desc}</div>
+          </div>
+        </li>
+      `).join("");
+    }
+
+    function normalizeRows(rows) {
+      return rows.map((r, i) => {
+        const impressions = Number(r.impressions ?? r.exposure ?? r.views ?? 0);
+        const clicks = Number(r.clicks ?? 0);
+        const citations = Number(r.citations ?? r.citation ?? 0);
+        const conversions = Number(r.conversions ?? r.conversion ?? 0);
+        const safeImpressions = impressions > 0 ? impressions : 1;
+        const safeClicks = clicks > 0 ? clicks : 1;
+        return {
+          date: r.date || r.day || `Day ${i + 1}`,
+          impressions,
+          clicks,
+          citations,
+          conversions,
+          ctr: clicks / safeImpressions,
+          citationRate: citations / safeImpressions,
+          conversionRate: conversions / safeClicks
+        };
+      });
+    }
+
+    function generateMockData(days = 12) {
+      const data = [];
+      const baseDate = new Date();
+      baseDate.setDate(baseDate.getDate() - (days - 1));
+      for (let i = 0; i < days; i++) {
+        const d = new Date(baseDate);
+        d.setDate(baseDate.getDate() + i);
+        const impressions = 800 + Math.floor(Math.random() * 700);
+        const clicks = Math.floor(impressions * (0.04 + Math.random() * 0.08));
+        const citations = Math.floor(impressions * (0.02 + Math.random() * 0.05));
+        const conversions = Math.floor(clicks * (0.08 + Math.random() * 0.18));
+        data.push({
+          date: d.toISOString().slice(0, 10),
+          impressions,
+          clicks,
+          citations,
+          conversions
+        });
+      }
+      return normalizeRows(data);
+    }
+
+    function parseCSV(text) {
+      const cleanedText = text.replace(/^\uFEFF/, "").trim();
+      const lines = cleanedText.split(/\r?\n/).filter(Boolean);
+      if (lines.length < 2) throw new Error("CSV 内容不足");
+      const headers = lines[0].split(",").map(h => h.trim());
+      const rows = lines.slice(1).map(line => {
+        const values = line.split(",").map(v => v.trim());
+        const row = {};
+        headers.forEach((h, idx) => (row[h] = values[idx]));
+        return row;
+      });
+      return normalizeRows(rows);
+    }
+
+    function parseJSON(text) {
+      const obj = JSON.parse(text);
+      const rows = Array.isArray(obj) ? obj : (Array.isArray(obj.data) ? obj.data : []);
+      if (!rows.length) throw new Error("JSON 中没有可用数组数据");
+      return normalizeRows(rows);
+    }
+
+    function renderTable(data) {
+      if (!data.length) {
+        tableBody.innerHTML = '<tr><td colspan="8" class="empty">暂无数据</td></tr>';
+        return;
+      }
+      tableBody.innerHTML = data.map(row => `
+        <tr>
+          <td>${row.date || "-"}</td>
+          <td>${row.impressions}</td>
+          <td>${row.clicks}</td>
+          <td>${row.citations}</td>
+          <td>${row.conversions}</td>
+          <td>${toPercent(row.ctr)}</td>
+          <td>${toPercent(row.citationRate)}</td>
+          <td>${toPercent(row.conversionRate)}</td>
+        </tr>
+      `).join("");
+    }
+
+    function drawChart(chartRef, canvasId, label, labels, data, color, uiType) {
+      if (typeof Chart === "undefined") {
+        return null;
+      }
+      const chartType = uiType === "horizontalBar" ? "bar" : uiType;
+      const isPie = chartType === "pie";
+      const indexAxis = uiType === "horizontalBar" ? "y" : "x";
+      const ctx = document.getElementById(canvasId).getContext("2d");
+      if (chartRef && chartRef.config.type === chartType) {
+        chartRef.data.labels = labels;
+        chartRef.data.datasets[0].data = data;
+        if (chartType === "bar") {
+          chartRef.options.indexAxis = indexAxis;
+        }
+        chartRef.update();
+        return chartRef;
+      }
+      if (chartRef) {
+        chartRef.destroy();
+      }
+      return new Chart(ctx, {
+        type: chartType,
+        data: {
+          labels,
+          datasets: [{
+            label,
+            data,
+            tension: chartType === "line" ? 0.35 : 0,
+            borderWidth: 2,
+            borderColor: color,
+            backgroundColor: isPie
+              ? labels.map((_, i) => `hsl(${(i * 37) % 360} 75% 60%)`)
+              : color + "66",
+            pointRadius: 3,
+            fill: chartType === "line"
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: indexAxis,
+          scales: isPie ? undefined : {
+            y: {
+              ticks: {
+                callback: v => Number(v).toFixed(2) + "%"
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function updateDashboard(data) {
+      lastData = data;
+      const labels = data.map(d => d.date);
+      const ctr = data.map(d => +(d.ctr * 100).toFixed(2));
+      const citation = data.map(d => +(d.citationRate * 100).toFixed(2));
+      const conversion = data.map(d => +(d.conversionRate * 100).toFixed(2));
+
+      ctrValue.textContent = toPercent(avg(data, "ctr"));
+      citationValue.textContent = toPercent(avg(data, "citationRate"));
+      conversionValue.textContent = toPercent(avg(data, "conversionRate"));
+
+      navRows.textContent = String(data.length);
+      navSource.textContent = lastSource;
+      targetSource.textContent = lastSource;
+      targetUrl.textContent = urlInput.value?.trim() || "--";
+      targetKeyword.textContent = keywordInput.value?.trim() || "--";
+
+      const firstDate = data[0]?.date ?? "--";
+      const lastDate = data[data.length - 1]?.date ?? "--";
+      rangeText.textContent = `${firstDate} ～ ${lastDate}`;
+
+      const sImpr = sum(data, "impressions");
+      const sClk = sum(data, "clicks");
+      const sCit = sum(data, "citations");
+      const sConv = sum(data, "conversions");
+
+      sumImpressions.textContent = fmtInt(sImpr);
+      sumClicks.textContent = fmtInt(sClk);
+      sumCitations.textContent = fmtInt(sCit);
+      sumConversions.textContent = fmtInt(sConv);
+
+      const pImpr = maxBy(data, "impressions");
+      const pClk = maxBy(data, "clicks");
+      const pCit = maxBy(data, "citations");
+      const pConv = maxBy(data, "conversions");
+      peakImpressions.textContent = pImpr ? `峰值：${fmtInt(pImpr.impressions)}（${pImpr.date}）` : "峰值：--";
+      peakClicks.textContent = pClk ? `峰值：${fmtInt(pClk.clicks)}（${pClk.date}）` : "峰值：--";
+      peakCitations.textContent = pCit ? `峰值：${fmtInt(pCit.citations)}（${pCit.date}）` : "峰值：--";
+      peakConversions.textContent = pConv ? `峰值：${fmtInt(pConv.conversions)}（${pConv.date}）` : "峰值：--";
+
+      renderInsights(data);
+      renderTable(data);
+      ctrChart = drawChart(ctrChart, "ctrChart", "CTR(%)", labels, ctr, "#2563eb", currentChartType);
+      citationChart = drawChart(citationChart, "citationChart", "引用率(%)", labels, citation, "#7c3aed", currentChartType);
+      conversionChart = drawChart(conversionChart, "conversionChart", "转化率(%)", labels, conversion, "#059669", currentChartType);
+    }
+
+    async function readUploadedFile(file) {
+      const text = await file.text();
+      const name = file.name.toLowerCase();
+      if (name.endsWith(".csv")) return parseCSV(text);
+      if (name.endsWith(".json")) return parseJSON(text);
+      try { return parseJSON(text); } catch (_) { return parseCSV(text); }
+    }
+
+    analyzeBtn.addEventListener("click", async () => {
+      setStatus("loading", "检测中...");
+      setNavState("检测中", "warn");
+      analyzeBtn.disabled = true;
+      try {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        const file = fileInput.files[0];
+        lastSource = file ? file.name : "模拟数据";
+        const data = file ? await readUploadedFile(file) : generateMockData(12);
+        if (!Array.isArray(data) || !data.length) throw new Error("未生成有效分析数据");
+        updateDashboard(data);
+        const hint = typeof Chart === "undefined" ? "（图表库未加载，仅显示表格）" : "";
+        setStatus("success", "检测成功" + hint);
+        setNavState("检测成功", "ok");
+      } catch (err) {
+        console.error(err);
+        const msg = err && err.message ? err.message : "未知错误";
+        setStatus("error", "检测失败：" + msg);
+        setNavState("检测失败", "bad");
+      } finally {
+        analyzeBtn.disabled = false;
+      }
+    });
+
+    chartTypeSelect.addEventListener("change", () => {
+      currentChartType = chartTypeSelect.value;
+      if (lastData.length) {
+        updateDashboard(lastData);
+      }
+    });
+
+    try {
+      lastSource = "模拟数据";
+      setNavState("已加载", "warn");
+      updateDashboard(generateMockData(10));
+    } catch (err) {
+      console.error(err);
+      setStatus("error", "初始化失败：" + (err && err.message ? err.message : "未知错误"));
+      setNavState("初始化失败", "bad");
+    }
+  </script>
+</body>
+</html>
